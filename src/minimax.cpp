@@ -3,6 +3,8 @@
 #include <algorithm>
 #include <cstdio>
 #include <cstring>
+#include <cassert>
+#include <thread>
 
 // in order to facilitate limited search timing, minimax checks the time every
 // ~half a million boards
@@ -105,6 +107,10 @@ static inline int32_t minimax(move_t *dst_best_move, board_t *old_board,
   if (!moves) {
     value = -minimax(nullptr, &board, 255, depth - 1, -beta, -alpha,
                      player == 1 ? 0 : 1, hash_table, start_time, search_time);
+
+    // we shouldn't have been asked for a move if we don't have any
+    assert(dst_best_move == nullptr);
+    return value;
   }
   // visit each move
   move_t best_move = 255;
@@ -153,6 +159,7 @@ static inline int32_t minimax(move_t *dst_best_move, board_t *old_board,
   // insert entry into hash table
   hash_table_insert(hash_table, &new_entry);
 
+  assert(best_move != 255);
   if (dst_best_move != nullptr) {
     *dst_best_move = best_move;
   }
@@ -179,6 +186,11 @@ int32_t get_move(move_t *dst_res_move, board_t *board, color_t player,
       printf("Time Up                    \n");
       break;
     }
+  }
+
+  /* if search ended early, wait */
+  if (difftime(time(nullptr), start) < search_time) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
   }
 
   return final_score;
